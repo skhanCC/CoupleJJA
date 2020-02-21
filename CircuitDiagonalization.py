@@ -17,7 +17,7 @@ from matplotlib import cm
 def JJAResClosedEigs(Nx, L, C, Cg, nEig=50, bc="neu"):
     """
     Function to solve boundary value problem for JJA resonator with open boundary
-    conditions at both ends
+    conditions at both ends. 
     
     Parameters:
     -----------
@@ -77,9 +77,9 @@ def JJAResClosedEigs(Nx, L, C, Cg, nEig=50, bc="neu"):
     sIVec = np.argsort( np.real(np.sqrt(spEigVals)) )
     spEigVals = spEigVals[sIVec]
     spEigVecs = spEigVecs[:,sIVec]
-   
     
-    return np.sqrt(spEigVals), spEigVecs
+    
+    return np.sqrt(w0*w0*spEigVals), spEigVecs
 ##################
 # Dispersion relation
 #def wk(k):
@@ -132,6 +132,9 @@ def JJAResOpenEigs(Nx, L, C, Cg, LW, CW, Cin, Cout, kRefVec, errTol=1e-5, itNum=
         Errors in convergence of computed eigenvalues
     """
     
+    # Plasma frequency
+    w0 = 1/np.sqrt(L*(Cg + 2*C))
+    
     # Number of eigenvalues to be computed
     nCom = len(kRefVec)
     
@@ -163,8 +166,9 @@ def JJAResOpenEigs(Nx, L, C, Cg, LW, CW, Cin, Cout, kRefVec, errTol=1e-5, itNum=
     for j in range(nCom):
     
         # Set frequency reference
-        kRef = kRefVec[j]
-        
+        Omega = w0*kRefVec[j]
+        kRef  = w0*np.sqrt(CW*LW)*kRefVec[j]
+        print(kRef)
         # Set error 
         err = 1
         # Loop over iterations
@@ -173,16 +177,16 @@ def JJAResOpenEigs(Nx, L, C, Cg, LW, CW, Cin, Cout, kRefVec, errTol=1e-5, itNum=
 
             # Factor for implementing outgoing boundary condition
             βL = (2+1j*kRef)/(2-1j*kRef) # Outgoing wavevector term
-            ζL = Cin/( -(kRef**2)*(CW+Cin) + (1/LW)*(1-βL) )
+            ζL = Cin/( -(Omega**2)*(CW+Cin) + (1/LW)*(1-βL) )
             βR = (2+1j*kRef)/(2-1j*kRef) # Outgoing wavevector term
-            ζR = Cout/( -(kRef**2)*(CW+Cout) + (1/LW)*(1-βR) )
+            ζR = Cout/( -(Omega**2)*(CW+Cout) + (1/LW)*(1-βR) )
 
             # Implement outgoing boundary conditions - left side resonator EOM
-            C1D[0,0]   = 1- chiC+chiIn-chiIn*(kRef**2)*ζL
+            C1D[0,0]   = 1- chiC+chiIn-chiIn*(Omega**2)*ζL
             L1D[0,0]   = 1
 
             # Implement outgoing boundary conditions - right side resonator EOM
-            C1D[-1,-1] = 1- chiC+chiOut-chiOut*(kRef**2)*ζR
+            C1D[-1,-1] = 1- chiC+chiOut-chiOut*(Omega**2)*ζR
             L1D[-1,-1] = 1
 
             # Solve generalized eigenvalue problem
@@ -220,7 +224,7 @@ def JJAResOpenEigs(Nx, L, C, Cg, LW, CW, Cin, Cout, kRefVec, errTol=1e-5, itNum=
 # Function to solve boundary value problem for JJA resonator capacitively coupled 
 # to open transmission lines at both ends. Solves for eigenvalues iteratively by 
 # starting from closed resonator case
-def JJAResOpenIterEigs(Nx, L, C, Cg, LW, CW, CL, CR, nEig=40, errTol=1e-5, itNum=5, capItNum=5, disp="on"):
+def JJAResOpenIterEigs(Nx, L, C, Cg, LW, CW, Cin, Cout, nEig=40, errTol=1e-5, itNum=5, capItNum=5, disp="on"):
     """
     Function to solve boundary value problem for JJA resonator with open boundary
     conditions at both ends. Starts with closed resonator and iteratively reaches
@@ -263,6 +267,9 @@ def JJAResOpenIterEigs(Nx, L, C, Cg, LW, CW, CL, CR, nEig=40, errTol=1e-5, itNum
         Computed eigenvectors
     """
     
+    # Plasma frequency
+    w0 = 1/np.sqrt(L* (Cg + 2*C))
+    
     # Vectors for iteration over end capacitances
     CLVec = np.linspace(0, Cin, capItNum)
     CRVec = np.linspace(0, Cout, capItNum)
@@ -270,6 +277,8 @@ def JJAResOpenIterEigs(Nx, L, C, Cg, LW, CW, CL, CR, nEig=40, errTol=1e-5, itNum
     # Find closed resonator eigenvalues
     refVals, _ = JJAResClosedEigs(Nx, L, C, Cg, nEig=nEig)
     refVals = refVals[1:]
+    # Rescale frequencies
+    refVals = refVals/w0
     
     # Loop over vectors of end capacitances
     for n in range(1,capItNum):
@@ -288,7 +297,7 @@ def JJAResOpenIterEigs(Nx, L, C, Cg, LW, CW, CL, CR, nEig=40, errTol=1e-5, itNum
     eigVals = refVals
     eigVecs = refVecs
     
-    return eigVals, eigVecs
+    return w0*eigVals, eigVecs
 
 
 # ##############################################################################
@@ -381,9 +390,9 @@ def JJACoupledClosedEigs(Nx, L, C, Cg, wJ, Csh, nEig=40, bc="neu"):
 
     if bc == "neu":
         # Set boundary elements - Neumann boundary conditions
-        L2D[0,0], L2D[-1,-1] = 1+chiLj, 1+chiLj
+        L2D[0,0], L2D[-1,-1] = 1+chiLj, 1+0*chiLj
         # Set boundary elements - Neumann boundary conditions
-        C2D[0,0], C2D[-1,-1] = 1- chiC+ chiCsh, 1- chiC+ chiCsh
+        C2D[0,0], C2D[-1,-1] = 1- chiC+ chiCsh, 1- chiC+ 0*chiCsh
 
         
     # Solve generalized eigenvalue problem
