@@ -88,7 +88,7 @@ def JJAEigs(Nx, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdefect, nEig, bc="neu", disp=
     spEigVals = spEigVals[sIVec]
     spEigVecs = spEigVecs[:,sIVec]
     
-    return np.sqrt(spEigVals), spEigVecs, C1D, L1D
+    return spEigVals, spEigVecs, C1D, L1D
 
 ##############################################################################
 # Function to solve boundary value problem for JJA resonator array with our without JJ defect capacitively coupled 
@@ -121,7 +121,7 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
     Cout
         Coupling capacitance between right transmission line and JJA resonator
     kRefVec
-        Vector of reference frequencies for eigenfunction calculation
+        Vector of reference eigenvalues for iterative calculation
     errTol
         Tolerance for iterative solver convergnce
     itNum
@@ -163,11 +163,11 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
     C1D = sp.sparse.spdiags(diagVals, diagPos, Nx, Nx)
     C1D = sp.sparse.csr_matrix(C1D)
 
-    # Loop over eigenvalues to be computed
-    for j in reversed(range(len(kRefVec))):
+    # Loop over eigenvalues to be computed FOR NOW THE LOOP STARTS AT 8 TO AVOID CONVERGENCE ERROR OF SMALLER EIGENVALUES
+    for j in range(8,nCom):
     #for j in range(nCom):
     
-        # Set frequency reference
+        # Set eigenvalue reference
         kRef = kRefVec[j]
        
         # Set error 
@@ -180,15 +180,15 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
         #while errre > errTol or errim > errTol:
             #if n > itNum: break
             # Terms for implementing outgoing boundary condition at left
-            kdxleft = np.sqrt(kRef*Lleft*Cleft/(Ljja*(Cjjagnd + 2*Cjja)))
-            βLeft = (2+1j*kdxleft)/(2-1j*kdxleft) # Outgoing wavevector term
-            wbarleft = Ljja*(Cjjagnd + 2*Cjja)/( Lleft*(Cleft + Cin) )
-            ζLeft = Cin/( (Cleft+Cin)*(1 - wbarleft/(kRef**2)*(1-βLeft)) )
+            kdxleft = np.sqrt(kRef * Lleft * Cleft / ( Ljja * (Cjjagnd + 2*Cjja) ) )
+            βLeft = (2 + 1j*kdxleft) / (2 - 1j*kdxleft) # Outgoing wavevector term
+            wbarleft = Ljja*( Cjjagnd + 2*Cjja ) / ( Lleft*(Cleft + Cin) )
+            ζLeft = (Cin / (Cleft+Cin)) / (1 - wbarleft/kRef*(1-βLeft))
             # Terms for implementing outgoing boundary condition at right
-            kdxright = np.sqrt(kRef*Lright*Cright/(Ljja*(Cjjagnd + 2*Cjja)))
+            kdxright = np.sqrt(kRef * Lright*Cright/(Ljja*(Cjjagnd + 2*Cjja)))
             βRight = (2+1j*kdxright)/(2-1j*kdxright) # Outgoing wavevector term
             wbarright = Ljja*(Cjjagnd + 2*Cjja)/( Lright*(Cright + Cout) )
-            ζRight = Cout/( (Cright+Cout)*(1 - wbarright/(kRef**2)*(1-βRight)) )
+            ζRight = ( Cout/( (Cright+Cout) ) / (1 - wbarright/kRef*(1-βRight)) )
 
             # Implement outgoing boundary conditions - left side resonator EOM
             χLeft = Cin/(Cjjagnd + 2*Cjja)*(1 - ζLeft)
@@ -217,19 +217,20 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
             C1D[Nx/2+1-1,Nx/2+1-1] = 1 - χC + χJJC
             # Solve generalized eigenvalue problem
             nEig = 1
-            spEigVals, spEigVecs = ssla.eigs(L1D, k=nEig, M=C1D, sigma=(kRef**2) )
+            spEigVals, spEigVecs = ssla.eigs(L1D, k=nEig, M=C1D, sigma=kRef )
 
             # Sort eigenvalues and eigenvectors
             sIVec = np.argsort( np.real(np.sqrt(spEigVals)) )
             spEigVals = spEigVals[sIVec]
             spEigVecs = spEigVecs[:,sIVec]
-            kVals = np.sqrt(spEigVals)
+            #kVals = np.sqrt(spEigVals)
+            kVals = spEigVals
     
             # Calculate error and set new reference
             err = np.abs( kRef - np.real(kVals[0]) )
             #errre = np.abs( np.real(kRef**2 - spEigVals[0]) )
             #errim = np.abs( np.imag(kRef**2 - spEigVals[0]) )
-            #kRef = kVals[0]
+            kRef = kVals[0]
             kRef = np.real(kVals[0])
             if disp == "on":
             #    print('Mode: ' + str(j) + ', errre: ' + '{:.4f}'.format(errre) + ', errim: ' + '{:.4f}'.format(errim) + ', it. num.: ' + str(n) )
