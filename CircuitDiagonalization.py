@@ -47,6 +47,7 @@ def JJAEigs(Nx, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdefect, nEig, bc="neu", disp=
     """
     # Vector of ones
     e = np.ones( (Nx,), dtype=complex )
+    #e = np.ones(Nx)
 
     # Check boundary conditions, print error message if incorrect
     assert bc == "neu" or bc == "dir", "Incorrect boundary conditions requested!"
@@ -164,7 +165,7 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
     C1D = sp.sparse.csr_matrix(C1D)
 
     # Loop over eigenvalues to be computed FOR NOW THE LOOP STARTS AT 8 TO AVOID CONVERGENCE ERROR OF SMALLER EIGENVALUES
-    for j in range(8,nCom):
+    for j in range(5,nCom):
     #for j in range(nCom):
     
         # Set eigenvalue reference
@@ -183,12 +184,12 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
             kdxleft = np.sqrt(kRef * Lleft * Cleft / ( Ljja * (Cjjagnd + 2*Cjja) ) )
             βLeft = (2 + 1j*kdxleft) / (2 - 1j*kdxleft) # Outgoing wavevector term
             wbarleft = Ljja*( Cjjagnd + 2*Cjja ) / ( Lleft*(Cleft + Cin) )
-            ζLeft = (Cin / (Cleft+Cin)) / (1 - wbarleft/kRef*(1-βLeft))
+            ζLeft = (Cin / (Cleft+Cin)) / (-1 + wbarleft/kRef*(1-βLeft))
             # Terms for implementing outgoing boundary condition at right
             kdxright = np.sqrt(kRef * Lright*Cright/(Ljja*(Cjjagnd + 2*Cjja)))
-            βRight = (2+1j*kdxright)/(2-1j*kdxright) # Outgoing wavevector term
+            βRight = (2 + 1j*kdxright)/(2 - 1j*kdxright) # Outgoing wavevector term
             wbarright = Ljja*(Cjjagnd + 2*Cjja)/( Lright*(Cright + Cout) )
-            ζRight = ( Cout/( (Cright+Cout) ) / (1 - wbarright/kRef*(1-βRight)) )
+            ζRight = ( Cout/( (Cright+Cout) ) / (-1 + wbarright/kRef*(1-βRight)) )
 
             # Implement outgoing boundary conditions - left side resonator EOM
             χLeft = Cin/(Cjjagnd + 2*Cjja)*(1 - ζLeft)
@@ -235,7 +236,7 @@ def JJAResOpenEigs(Nx, Lleft, Cleft, Cin, Cjjagnd, Ljja, Cjja, Ljjdefect, Cjjdef
             if disp == "on":
             #    print('Mode: ' + str(j) + ', errre: ' + '{:.4f}'.format(errre) + ', errim: ' + '{:.4f}'.format(errim) + ', it. num.: ' + str(n) )
                 print( 'Mode: ' + str(j) + ', err: ' + str(err) + ', iteration: ', str(n) )
-                print('EigVal ' + str(kVals[0]))
+                print('EigVal ' + str(eigVals[j]))
     
             # Increment iteration
             n = n + 1
